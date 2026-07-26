@@ -17,14 +17,13 @@ def load_data():
         return df
     except Exception as e:
         # Fallback for Streamlit Cloud deployment if local DB is unreachable
-        st.warning("⚠️ Cloud Mode: Local PostgreSQL database unreachable. Loading dataset directly from Excel/CSV file.")
+        st.warning("⚠️ Cloud Mode: Local PostgreSQL database unreachable. Loading dataset directly from Excel file.")
         
-        # Try reading local dataset file directly
-        file_path = "sales_data.xlsx" # Apne Excel file ka exact naam yahan check kar lein
+        file_path = "Online Retail.xlsx" 
         if os.path.exists(file_path):
             return pd.read_excel(file_path)
-        elif os.path.exists("Online Retail.xlsx"):
-            return pd.read_excel("Online Retail.xlsx")
+        elif os.path.exists("sales_data.xlsx"):
+            return pd.read_excel("sales_data.xlsx")
         else:
             # Emergency Mock Data if no dataset file found
             st.info("Generating demonstration dataset for UI...")
@@ -38,7 +37,18 @@ def load_data():
 
 # Load the dataset
 df_raw = load_data()
-# PAGE 5: DATA EXPLORER
+
+# 1. SIDEBAR NAVIGATION MENU (Yeh missing tha!)
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Select View", ["📊 Overview", "📋 Raw Data Explorer"])
+
+# 2. PAGE 1: OVERVIEW (Pehla block ALWAYS 'if' hota hai)
+if page == "📊 Overview":
+    st.header("📊 NeuralRetail Executive Summary")
+    st.write("Welcome to the NeuralRetail Analytics Dashboard!")
+    # Aapka Executive Summary / Overview wala baki code yahan aayega...
+
+# 3. PAGE 2: DATA EXPLORER (Ab 'elif' kaam karega!)
 elif page == "📋 Raw Data Explorer":
     st.header("📋 Database Transactions Explorer")
     st.dataframe(df_raw.head(100), use_container_width=True)
