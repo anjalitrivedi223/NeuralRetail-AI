@@ -67,26 +67,30 @@ def load_and_preprocess_data():
             'Country': np.random.choice(['United Kingdom', 'Germany', 'France', 'EIRE'], size=2000)
         })
 
-    # Data Standardization
-    col_map = {col.lower(): col for col in df.columns}
-    
-    # Date Handling
+    # Data Standardization & Type Safety
     date_col = next((col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()), None)
     if date_col:
         df['InvoiceDate'] = pd.to_datetime(df[date_col], errors='coerce')
     else:
         df['InvoiceDate'] = pd.Timestamp.today()
 
+    # FIX FOR PYARROW TYPE CONVERSION ERROR (InvoiceNo & StockCode to String)
+    inv_col = next((col for col in df.columns if 'invoice' in col.lower()), 'InvoiceNo')
+    stock_col = next((col for col in df.columns if 'stock' in col.lower()), 'StockCode')
+    cust_col = next((col for col in df.columns if 'cust' in col.lower()), 'CustomerID')
+    desc_col = next((col for col in df.columns if 'desc' in col.lower() or 'item' in col.lower()), 'Description')
+    
+    df['InvoiceNo'] = df[inv_col].astype(str)
+    df['StockCode'] = df[stock_col].astype(str)
+    df['CustomerID'] = df[cust_col].astype(str).fillna('Guest')
+    df['Description'] = df[desc_col].astype(str).fillna('Unknown Item')
+
     # Numeric Columns
     qty_col = next((col for col in df.columns if 'quant' in col.lower()), 'Quantity')
     price_col = next((col for col in df.columns if 'price' in col.lower() or 'unit' in col.lower() or 'amount' in col.lower()), 'UnitPrice')
-    cust_col = next((col for col in df.columns if 'cust' in col.lower()), 'CustomerID')
-    desc_col = next((col for col in df.columns if 'desc' in col.lower() or 'item' in col.lower()), 'Description')
 
     df['Quantity'] = pd.to_numeric(df[qty_col], errors='coerce').fillna(1)
     df['UnitPrice'] = pd.to_numeric(df[price_col], errors='coerce').fillna(10.0)
-    df['CustomerID'] = df[cust_col].fillna('Guest')
-    df['Description'] = df[desc_col].fillna('Unknown Item')
     df['Revenue'] = df['Quantity'] * df['UnitPrice']
     
     # Filter out invalid returns for general analytics
@@ -158,7 +162,6 @@ if page == "📊 Executive Dashboard":
 
     with col_left:
         st.subheader("📈 Monthly Revenue & Order Volume")
-        # FIX 1: Changed 'M' to 'ME'
         monthly_trend = filtered_df.set_index('InvoiceDate').resample('ME').agg({
             'Revenue': 'sum',
             'Quantity': 'sum'
@@ -166,7 +169,7 @@ if page == "📊 Executive Dashboard":
         
         fig_trend = px.line(monthly_trend, x='InvoiceDate', y='Revenue', title="Revenue Trajectory Over Time", markers=True)
         fig_trend.update_layout(template="plotly_dark", height=380)
-        st.plotly_chart(fig_trend, use_container_width=True)
+        st.plotly_chart(fig_trend, width="stretch")
 
     with col_right:
         st.subheader("🌍 Regional Revenue Distribution")
@@ -174,7 +177,7 @@ if page == "📊 Executive Dashboard":
             country_rev = filtered_df.groupby('Country')['Revenue'].sum().reset_index().sort_values('Revenue', ascending=False).head(5)
             fig_pie = px.pie(country_rev, values='Revenue', names='Country', title="Top 5 Markets", hole=0.4)
             fig_pie.update_layout(template="plotly_dark", height=380)
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width="stretch")
 
 # ---------------------------------------------------------
 # PAGE 2: CUSTOMER RFM & SEGMENTATION
@@ -216,7 +219,7 @@ elif page == "🎯 Customer RFM & Segmentation":
             seg_counts.columns = ['Segment', 'Count']
             fig_seg = px.bar(seg_counts, x='Count', y='Segment', orientation='h', color='Segment', title="Customer Distribution")
             fig_seg.update_layout(template="plotly_dark", showlegend=False)
-            st.plotly_chart(fig_seg, use_container_width=True)
+            st.plotly_chart(fig_seg, width="stretch")
 
         with c2:
             st.subheader("3D Recency vs Frequency vs Monetary Scatter")
@@ -225,11 +228,11 @@ elif page == "🎯 Customer RFM & Segmentation":
                 color='Segment', opacity=0.8, title="RFM Spatial Clusters"
             )
             fig_3d.update_layout(template="plotly_dark", height=450)
-            st.plotly_chart(fig_3d, use_container_width=True)
+            st.plotly_chart(fig_3d, width="stretch")
 
         st.markdown("### 📋 High-Value At-Risk Customers (Churn Prevention)")
         at_risk = rfm[rfm['Segment'] == "At Risk / Churn Warning ⚠️"].sort_values('Monetary', ascending=False)
-        st.dataframe(at_risk, use_container_width=True)
+        st.dataframe(at_risk, width="stretch")
 
 # ---------------------------------------------------------
 # PAGE 3: AI SALES & DEMAND FORECAST
@@ -238,7 +241,6 @@ elif page == "🔮 AI Sales & Demand Forecast":
     st.title("🔮 AI Demand & Revenue Forecasting")
     st.markdown("Machine Learning trend projection to forecast future inventory and revenue needs.")
 
-    # FIX 2: Changed 'M' to 'ME'
     monthly_data = filtered_df.set_index('InvoiceDate').resample('ME')['Revenue'].sum().reset_index()
     monthly_data = monthly_data[monthly_data['Revenue'] > 0]
 
@@ -249,7 +251,6 @@ elif page == "🔮 AI Sales & Demand Forecast":
         slope, intercept = np.polyfit(monthly_data['Month_Idx'], monthly_data['Revenue'], 1)
 
         last_date = monthly_data['InvoiceDate'].max()
-        # FIX 3: Changed freq='M' to freq='ME'
         future_dates = pd.date_range(start=last_date + pd.DateOffset(months=1), periods=horizon, freq='ME')
         future_idx = np.arange(len(monthly_data), len(monthly_data) + horizon)
         
@@ -263,7 +264,7 @@ elif page == "🔮 AI Sales & Demand Forecast":
 
         fig_forecast = px.line(combined, x='InvoiceDate', y='Revenue', color='Type', title=f"{horizon}-Month Projected Revenue", markers=True)
         fig_forecast.update_layout(template="plotly_dark", height=420)
-        st.plotly_chart(fig_forecast, use_container_width=True)
+        st.plotly_chart(fig_forecast, width="stretch")
 
         c1, c2 = st.columns(2)
         c1.metric("Next Month Predicted Revenue", f"${predicted_rev[0]:,.2f}")
@@ -282,14 +283,14 @@ elif page == "🛒 Product Basket Analysis":
         top_products = filtered_df.groupby('Description')['Quantity'].sum().reset_index().sort_values('Quantity', ascending=False).head(10)
         fig_prod = px.bar(top_products, x='Quantity', y='Description', orientation='h', color='Quantity', title="Top Items by Quantity Sold")
         fig_prod.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_prod, use_container_width=True)
+        st.plotly_chart(fig_prod, width="stretch")
 
     with col2:
         st.subheader("💰 Top Revenue Generating Items")
         top_rev_prod = filtered_df.groupby('Description')['Revenue'].sum().reset_index().sort_values('Revenue', ascending=False).head(10)
         fig_rev_p = px.bar(top_rev_prod, x='Revenue', y='Description', orientation='h', color='Revenue', title="Top Items by Gross Revenue")
         fig_rev_p.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_rev_p, use_container_width=True)
+        st.plotly_chart(fig_rev_p, width="stretch")
 
 # ---------------------------------------------------------
 # PAGE 5: RAW DATABASE EXPLORER
@@ -298,7 +299,13 @@ elif page == "📋 Raw Database Explorer":
     st.title("📋 Database Records Explorer")
     st.markdown("Filter, search, and download raw transaction data.")
     
-    st.dataframe(filtered_df, use_container_width=True)
+    # Pre-formatting columns to pure string to bypass PyArrow crash
+    display_df = filtered_df.copy()
+    display_df['InvoiceNo'] = display_df['InvoiceNo'].astype(str)
+    display_df['StockCode'] = display_df['StockCode'].astype(str)
+    display_df['CustomerID'] = display_df['CustomerID'].astype(str)
+
+    st.dataframe(display_df, width="stretch")
     
-    csv = filtered_df.to_csv(index=False).encode('utf-8')
+    csv = display_df.to_csv(index=False).encode('utf-8')
     st.download_button("📥 Download Filtered Data as CSV", data=csv, file_name="neural_retail_export.csv", mime="text/csv")
