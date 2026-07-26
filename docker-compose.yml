@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: neural_retail_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: NeuralRetailPassword2026
+      POSTGRES_DB: neural_retail_db
+    ports:
+      - "5432:5432"
+    networks:
+      - neural_network
+
+  mlflow_server:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: neural_retail_mlflow
+    restart: always
+    ports:
+      - "5000:5000"
+    command: mlflow server --host 0.0.0.0 --port 5000
+    networks:
+      - neural_network
+
+networks:
+  neural_network:
+    driver: bridge

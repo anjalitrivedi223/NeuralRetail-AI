@@ -1,0 +1,26 @@
+project:
+  name: "NeuralRetail"
+  version: "1.0.0"
+  environment: "development"
+
+data:
+  raw_path: "src/ingestion/data/raw_transactions.csv"
+  processed_path: "src/ingestion/data/processed_transactions.parquet"
+  target_mape: 0.10  # 10% target error for forecasting
+  target_auc: 0.90   # 0.90 target for churn model
+
+database:
+  type: "postgresql"
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "NeuralRetailPassword2026"
+  name: "neural_retail_db"
+
+redis:
+  host: "localhost"
+  port: 6379
+
+mlflow:
+  tracking_uri: "http://localhost:5000"
+  experiment_name: "Neural_Retail_Analytics"
