@@ -55,7 +55,7 @@ def load_and_preprocess_data():
 
     # Mock Data Fallback if no file exists
     if df is None or df.empty:
-        dates = pd.date_range(end=pd.Timestamp.today(), periods=2000, freq='H')
+        dates = pd.date_range(end=pd.Timestamp.today(), periods=2000, freq='h')
         df = pd.DataFrame({
             'InvoiceNo': [f"INV{1000+i}" for i in range(2000)],
             'StockCode': [f"SKU{np.random.randint(100, 110)}" for _ in range(2000)],
@@ -158,7 +158,8 @@ if page == "📊 Executive Dashboard":
 
     with col_left:
         st.subheader("📈 Monthly Revenue & Order Volume")
-        monthly_trend = filtered_df.set_index('InvoiceDate').resample('M').agg({
+        # FIX 1: Changed 'M' to 'ME'
+        monthly_trend = filtered_df.set_index('InvoiceDate').resample('ME').agg({
             'Revenue': 'sum',
             'Quantity': 'sum'
         }).reset_index()
@@ -237,7 +238,8 @@ elif page == "🔮 AI Sales & Demand Forecast":
     st.title("🔮 AI Demand & Revenue Forecasting")
     st.markdown("Machine Learning trend projection to forecast future inventory and revenue needs.")
 
-    monthly_data = filtered_df.set_index('InvoiceDate').resample('M')['Revenue'].sum().reset_index()
+    # FIX 2: Changed 'M' to 'ME'
+    monthly_data = filtered_df.set_index('InvoiceDate').resample('ME')['Revenue'].sum().reset_index()
     monthly_data = monthly_data[monthly_data['Revenue'] > 0]
 
     if len(monthly_data) > 2:
@@ -247,7 +249,8 @@ elif page == "🔮 AI Sales & Demand Forecast":
         slope, intercept = np.polyfit(monthly_data['Month_Idx'], monthly_data['Revenue'], 1)
 
         last_date = monthly_data['InvoiceDate'].max()
-        future_dates = pd.date_range(start=last_date + pd.DateOffset(months=1), periods=horizon, freq='M')
+        # FIX 3: Changed freq='M' to freq='ME'
+        future_dates = pd.date_range(start=last_date + pd.DateOffset(months=1), periods=horizon, freq='ME')
         future_idx = np.arange(len(monthly_data), len(monthly_data) + horizon)
         
         predicted_rev = np.maximum(slope * future_idx + intercept, monthly_data['Revenue'].mean() * 0.4)
